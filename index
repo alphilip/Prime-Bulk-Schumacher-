@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bulk WhatsApp DM Scheduler</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+      background: #f4f4f4;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 700px;
+      width: 100%;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    textarea,
+    input {
+      width: 100%;
+      padding: 12px;
+      margin-top: 5px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 12px 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 8px;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    .batch {
+      background: #fafafa;
+      border: 1px solid #ccc;
+      margin-top: 25px;
+      padding: 15px;
+      border-radius: 10px;
+    }
+
+    .batch button {
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+
+    pre {
+      background: #eee;
+      padding: 10px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+
+    footer {
+      margin-top: 40px;
+      background: #222;
+      color: #eee;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      max-width: 700px;
+    }
+
+    h3 {
+      margin-top: 30px;
+      text-align: center;
+    }
+
+    ul {
+      padding-left: 20px;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+      }
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Bulk WhatsApp DM Scheduler</h1>
+
+    <label for="numbers">Insert Numbers (one per line):</label>
+    <textarea id="numbers" rows="10" placeholder="233xxxxxxxxx"></textarea>
+
+    <label for="startHour">Start Hour (24hr format):</label>
+    <input type="number" id="startHour" min="0" max="23" value="7">
+
+    <label for="interval">Time Interval (in minutes):</label>
+    <input type="number" id="interval" min="1" value="3">
+
+    <label for="batchSize">Number per Batch:</label>
+    <input type="number" id="batchSize" min="1" value="10">
+
+    <button onclick="generateSchedule()">Generate Schedule</button>
+
+    <div id="output"></div>
+
+    <h3>How to Use</h3>
+    <ul>
+      <li>Paste your WhatsApp numbers (one per line) in the textbox above.</li>
+      <li>Set the starting hour, time interval between each message, and how many messages per batch.</li>
+      <li>Click "Generate Schedule" to get your batches.</li>
+      <li>Click <strong>"Copy Batch"</strong> to copy the set, or <strong>"Schedule for Me"</strong> to forward it to your WhatsApp.</li>
+    </ul>
+
+    <h3>Tips</h3>
+    <ul>
+      <li>Ensure all numbers follow the format <code>233XXXXXXXXX</code>.</li>
+      <li>Use intervals like 3-5 minutes to avoid being flagged as spam by WhatsApp.</li>
+      <li>Start scheduling early to give the system time to run through all batches.</li>
+    </ul>
+  </div>
+
+  <footer>
+    <p>&copy; 2025 Bulk WhatsApp Scheduler | Developed by Mr. Phyll</p>
+  </footer>
+
+  <script>
+    function generateSchedule() {
+      const numbersInput = document.getElementById("numbers").value.trim();
+      const interval = parseInt(document.getElementById("interval").value);
+      const startHour = parseInt(document.getElementById("startHour").value);
+      const batchSize = parseInt(document.getElementById("batchSize").value);
+      const numbers = numbersInput
+        .split('\n')
+        .map(num => num.replace(/[^0-9]/g, '').trim())
+        .filter(num => num.length > 0);
+
+      const outputDiv = document.getElementById("output");
+      outputDiv.innerHTML = "";
+
+      let minute = 0;
+      let hour = startHour;
+      let batch = [];
+
+      numbers.forEach((number, index) => {
+        const schedule = `.setschedule ${number}@s.whatsapp.net ${minute}-${hour}, once`;
+        batch.push(schedule);
+
+        minute += interval;
+        if (minute >= 60) {
+          hour = (hour + Math.floor(minute / 60)) % 24;
+          minute = minute % 60;
+        }
+
+        if ((index + 1) % batchSize === 0 || index === numbers.length - 1) {
+          const batchText = batch.join('\n');
+          const batchDiv = document.createElement("div");
+          batchDiv.classList.add("batch");
+          batchDiv.innerHTML = `
+            <button class="copy-btn" onclick="copyToClipboard(this)">Copy Batch</button>
+            <button class="send-btn" onclick="sendToWhatsApp(\`${batchText.replace(/`/g, "\\`")}\`)">Schedule for Me</button>
+            <pre>${batchText}</pre>
+          `;
+          outputDiv.appendChild(batchDiv);
+          batch = [];
+        }
+      });
+    }
+
+    function copyToClipboard(button) {
+      const text = button.nextElementSibling.nextElementSibling.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        button.innerText = "Copied!";
+        button.disabled = true;
+        button.style.background = "#28a745";
+      });
+    }
+
+    function sendToWhatsApp(message) {
+      const recipient = "233201100703";
+      const encodedMessage = encodeURIComponent(message);
+      const url = `https://wa.me/${recipient}?text=${encodedMessage}`;
+      window.open(url, '_blank');
+    }
+  </script>
+
+</body>
+</html>
